@@ -28,8 +28,9 @@ import { NFTContract } from './artifacts/NFT'
 class Token extends Contract.fromAztec(TokenContract) {}
 class NFT extends Contract.fromAztec(NFTContract) {}
 
-//const NODE_URL = "http://localhost:8080"
-const NODE_URL = 'https://registry.obsidion.xyz/node'
+// NFT.artifact
+const NODE_URL = 'http://localhost:8080'
+// const NODE_URL = 'https://registry.obsidion.xyz/node'
 // const WALLET_URL = "http://localhost:5173"
 const WALLET_URL = 'https://app.obsidion.xyz'
 
@@ -43,6 +44,31 @@ type TokenType = {
   name: string
   symbol: string
   decimals: number
+}
+
+const buildConnectionParams = () => {
+  return {
+    dappMetadata: {
+      name: 'Azguard Test App (SDK)',
+      description: 'Simple app showing how to interact with the Azguard Wallet via Azguard SDK',
+      logo: 'https://somestaffspace.fra1.digitaloceanspaces.com/logo.png',
+      url: 'https://azguardwallet.io/',
+    },
+    requiredPermissions: [
+      {
+        chains: ['aztec:1337'],
+        methods: ['register_contract', 'send_transaction', 'call', 'simulate_utility'],
+        events: [],
+      },
+    ],
+    optionalPermissions: [
+      {
+        chains: ['aztec:11155111'],
+        methods: ['register_contract', 'send_transaction', 'call', 'simulate_utility'],
+        events: [],
+      },
+    ],
+  }
 }
 
 export function Example() {
@@ -114,6 +140,26 @@ export function Example() {
 
     loadToken()
   }, [token, tokenContract])
+
+  useEffect(() => {
+    const connectAzguard = async () => {
+      try {
+        console.log('azguard window', window.azguard)
+        if (window.azguard) {
+          const azguard = window.azguard.createClient()
+          console.log('azguard', azguard)
+
+          const sessionValue = await azguard.request('connect', buildConnectionParams())
+
+          console.log('session value', sessionValue)
+        }
+      } catch (err) {
+        console.log('ERROR CONNECTION AZGUARD', err)
+      }
+    }
+
+    connectAzguard()
+  }, [])
 
   const handleAddToken = async () => {
     setError(null)
@@ -355,9 +401,32 @@ export function Example() {
 
     setLoading(true)
 
+    // static deployWithOpts(
+    //   options: DeployOptions & {
+    //     account: Account;
+    //     publicKeys?: PublicKeys;
+    //     method?: keyof T["methods"] & string;
+    //   },
+    //   ...args: ParametersExceptFirst<TClass["deploy"]>
+    // ) {
+    //   return new DeployMethod(
+    //     options.publicKeys ?? PublicKeys.default(),
+    //     options.account,
+    //     this.artifact,
+    //     this.at,
+    //     args,
+    //     options,
+    //     options.method,
+    //   );
+    // }
+
     try {
-      const deployTx = await NFT.deploy(
-        account,
+      const deployTx = await NFT.deployWithOpts(
+        {
+          account,
+          skipPublicDeployment: false,
+          skipClassRegistration: false,
+        },
         account.getAddress(),
         'Test Col',
         'TEST',
@@ -366,6 +435,14 @@ export function Example() {
         1,
         100,
         0
+
+        // {
+        //   registerContracts: [
+        //     {
+
+        //     }
+        //   ],
+        // }
       )
         .send()
         .wait()
