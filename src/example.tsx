@@ -24,11 +24,12 @@ import { useAccount } from '@nemi-fi/wallet-sdk/react'
 import { AztecWalletSdk, obsidion } from '@nemi-fi/wallet-sdk'
 import { formatUnits, parseUnits } from 'viem'
 import { NFTContract } from './artifacts/NFT'
+import { toast } from 'react-toastify'
+import { getDeployContractBatchCalls } from './register-contract'
 
 class Token extends Contract.fromAztec(TokenContract) {}
 class NFT extends Contract.fromAztec(NFTContract) {}
 
-// NFT.artifact
 const NODE_URL = 'http://localhost:8080'
 // const NODE_URL = 'https://registry.obsidion.xyz/node'
 // const WALLET_URL = "http://localhost:5173"
@@ -55,26 +56,31 @@ const buildConnectionParams = () => {
       url: 'https://azguardwallet.io/',
     },
     requiredPermissions: [
+      // SANDBOX PERMISSIONS
       {
-        chains: ['aztec:1337'],
+        chains: ['aztec:31337'],
         methods: ['register_contract', 'send_transaction', 'call', 'simulate_utility'],
         events: [],
       },
     ],
     optionalPermissions: [
-      {
-        chains: ['aztec:11155111'],
-        methods: ['register_contract', 'send_transaction', 'call', 'simulate_utility'],
-        events: [],
-      },
+      // TESTNET PERMISSIONS
+      // {
+      //   chains: ['aztec:11155111'],
+      //   methods: ['register_contract', 'send_transaction', 'call', 'simulate_utility'],
+      //   events: [],
+      // },
     ],
   }
 }
 
 export function Example() {
   const account = useAccount(sdk)
-
   const [tokenContract, setTokenContract] = useState<Token | null>(null)
+  const [azguardAccount, setAzguardAccount] = useState('')
+  const [azguardAddress, setAzguardAddress] = useState('')
+  const [azguardSessionId, setAzguardSessionId] = useState('')
+  const [azguardClient, setAzguardClient] = useState(null)
   const [contractForRegister, setContractForRegister] = useState<{
     address: AztecAddress
     instance: ContractInstanceWithAddress
@@ -141,25 +147,27 @@ export function Example() {
     loadToken()
   }, [token, tokenContract])
 
-  useEffect(() => {
-    const connectAzguard = async () => {
-      try {
-        console.log('azguard window', window.azguard)
-        if (window.azguard) {
-          const azguard = window.azguard.createClient()
-          console.log('azguard', azguard)
+  const connectAzguard = async () => {
+    try {
+      console.log('azguard window', window.azguard)
+      if (window.azguard) {
+        const azguard = window.azguard.createClient()
+        setAzguardClient(azguard)
+        console.log('azguard', azguard)
 
-          const sessionValue = await azguard.request('connect', buildConnectionParams())
-
-          console.log('session value', sessionValue)
+        const sessionValue = await azguard.request('connect', buildConnectionParams())
+        if (sessionValue?.id) {
+          setAzguardSessionId(sessionValue.id)
+          const accounts = sessionValue?.accounts || []
+          setAzguardAccount(accounts[0])
+          const address = accounts[0].split(':').at(-1)
+          setAzguardAddress(address)
         }
-      } catch (err) {
-        console.log('ERROR CONNECTION AZGUARD', err)
       }
+    } catch (err) {
+      console.log('ERROR CONNECTION AZGUARD', err)
     }
-
-    connectAzguard()
-  }, [])
+  }
 
   const handleAddToken = async () => {
     setError(null)
@@ -390,7 +398,7 @@ export function Example() {
     }
   }
 
-  const handleDeployNFTCollection = async () => {
+  const handleDeployNFTCollectionObsidion = async () => {
     setError(null)
 
     if (!account) {
@@ -478,6 +486,30 @@ export function Example() {
     }
   }
 
+  const handleDeployNFTCollectionAzguard = async () => {
+    try {
+      if (!azguardClient) {
+        return toast.error('Azguard client not initiaited')
+      }
+      if (!azguardAddress) {
+        return toast.error('Azguard wallet not connected')
+      }
+      const executeParams = await getDeployContractBatchCalls({
+        account: azguardAccount,
+        address: azguardAddress,
+        sessionId: azguardSessionId,
+      })
+      console.log('Execute  Params', executeParams)
+      const results = await azguardClient.request('execute', executeParams)
+      console.log('Results', results)
+    } catch (e) {
+      setError('Error minting token')
+      console.error('Error minting token: ', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleRemoveToken = async () => {
     setError(null)
     setToken(null)
@@ -537,7 +569,7 @@ export function Example() {
       </div>
 
       {/* Account Display */}
-      {account ? (
+      {account || azguardAddress ? (
         <div style={{ width: '100%' }}>
           <div
             style={{
@@ -556,17 +588,17 @@ export function Example() {
               size="md"
               w={500}
             >
-              Connected:{' '}
+              Connected:{`${!!account ? 'Obsidion' : 'Azguard'}`}
             </Text>
             <Text
               size="md"
               color="dimmed"
               mx={8}
             >
-              {shortenAddress(account.getAddress().toString())}
+              {shortenAddress(!!account ? account.getAddress().toString() : azguardAddress)}
             </Text>
             <CopyButton
-              value={account.getAddress().toString()}
+              value={account ? account.getAddress().toString() : azguardAddress}
               timeout={2000}
             >
               {({ copied, copy }) => (
@@ -971,9 +1003,9 @@ export function Example() {
                   <div style={{ textAlign: 'center' }}>
                     <Button
                       disabled={loading}
-                      onClick={() => handleDeployNFTCollection()}
+                      onClick={handleDeployNFTCollectionObsidion}
                     >
-                      🪙 Deploy NFT Collection
+                      🪙 Deploy NFT Collection Obsidion
                     </Button>
                   </div>
 
@@ -1064,10 +1096,22 @@ export function Example() {
               console.log('account: ', account)
             }}
           >
-            Connect Wallet
+            Connect Obsidion Wallet
+          </Button>
+          <Button
+            size="lg"
+            onClick={connectAzguard}
+          >
+            Connect AzGuard Wallet
           </Button>
         </div>
       )}
+      <Button
+        size="lg"
+        onClick={handleDeployNFTCollectionAzguard}
+      >
+        Deploy NFT contract azguard
+      </Button>
     </Stack>
   )
 }
