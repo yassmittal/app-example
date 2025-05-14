@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@azguardwallet/client": "^0.4.2",
+    "@azguardwallet/types": "^0.4.1",
     "@aztec/aztec.js": "0.85.0-alpha-testnet.2",
     "@aztec/noir-contracts.js": "0.85.0-alpha-testnet.2",
     "@mantine/core": "^7.17.2",

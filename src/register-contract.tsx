@@ -28,7 +28,9 @@ const capsuleStorageSlot = new Fr(REGISTERER_CONTRACT_BYTECODE_CAPSULE_SLOT)
 
 // compute contract class from the artifact
 // const { artifactHash, privateFunctionsRoot, publicBytecodeCommitment, packedBytecode } =
-await getContractClassFromArtifact(NFTContractArtifact)
+
+const { artifactHash, privateFunctionsRoot, publicBytecodeCommitment, packedBytecode } =
+  await getContractClassFromArtifact(NFTContractArtifact)
 
 // const encodedBytecode = bufferAsFields(packedBytecode, MAX_PACKED_PUBLIC_BYTECODE_SIZE_IN_FIELDS)
 const getChain = (account: string) => account?.substring(0, account.lastIndexOf(':'))
@@ -60,6 +62,10 @@ export const getDeployContractBatchCalls = async ({
     salt: Fr.zero(),
   })
   const { salt, currentContractClassId, initializationHash, publicKeys } = instance
+
+  const encodedBytecode = bufferAsFields(packedBytecode, MAX_PACKED_PUBLIC_BYTECODE_SIZE_IN_FIELDS)
+
+  console.log('currentContractClassId', currentContractClassId.toString())
   const operations = [
     {
       // here we register the contract in PXE, so PXE can interact with it
@@ -73,12 +79,26 @@ export const getDeployContractBatchCalls = async ({
       kind: 'send_transaction',
       account,
       actions: [
+        // {
+        //   // here we provide the class registerer with our public bytecode via capsule
+        //   kind: 'add_capsule',
+        //   contract: classRegisterer,
+        //   storageSlot: capsuleStorageSlot,
+        //   capsule: encodedBytecode,
+        // },
+        // {
+        //   // here we publicly register the contract class
+        //   kind: 'call',
+        //   contract: classRegisterer,
+        //   method: 'register',
+        //   args: [artifactHash, privateFunctionsRoot, publicBytecodeCommitment, true],
+        // },
         {
           // here we publicly deploy the contract instance
           kind: 'call',
           contract: instanceDeployer,
           method: 'deploy',
-          args: [salt, currentContractClassId, initializationHash, publicKeys, true],
+          args: [salt, currentContractClassId, initializationHash, publicKeys.toNoirStruct(), true],
         },
         {
           // here we initialize the contract

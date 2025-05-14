@@ -55,14 +55,35 @@ const buildConnectionParams = () => {
       logo: 'https://somestaffspace.fra1.digitaloceanspaces.com/logo.png',
       url: 'https://azguardwallet.io/',
     },
+    // requiredPermissions: [
+    //   // SANDBOX PERMISSIONS
+    //   {
+    //     chains: ['aztec:31337'],
+    //     methods: [
+    //       'register_contract',
+    //       'send_transaction',
+    //       'call',
+    //       'simulate_utility',
+    //       'add_capsule',
+    //     ],
+    //     events: [],
+    //   },
+    // ],
     requiredPermissions: [
-      // SANDBOX PERMISSIONS
+      // TESTNET PERMISSIONS
       {
-        chains: ['aztec:31337'],
-        methods: ['register_contract', 'send_transaction', 'call', 'simulate_utility'],
+        chains: ['aztec:11155111'],
+        methods: [
+          'register_contract',
+          'send_transaction',
+          'call',
+          'simulate_utility',
+          'add_capsule',
+        ],
         events: [],
       },
     ],
+
     optionalPermissions: [
       // TESTNET PERMISSIONS
       // {
